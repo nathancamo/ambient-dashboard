@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Ambient TV Hub</title>
+  <style>
+    :root {
+      color-scheme: dark light;
+      --bg-dark: #05070e;
+      --bg-light: #f8fafc;
+      --card-dark: rgba(17, 24, 39, 0.72);
+      --card-light: rgba(255, 255, 255, 0.85);
+      --text-dark: #f8fafc;
+      --text-light: #0f172a;
+      --muted-dark: #94a3b8;
+      --muted-light: #475569;
+      --accent-dark: #a78bfa;
+      --accent-light: #6d28d9;
+      --border-dark: rgba(255, 255, 255, 0.12);
+      --border-light: rgba(15, 23, 42, 0.12);
+
+      --bg: var(--bg-dark);
+      --card: var(--card-dark);
+      --text: var(--text-dark);
+      --muted: var(--muted-dark);
+      --accent: var(--accent-dark);
+      --border: var(--border-dark);
+
+      @media (prefers-color-scheme: light) {
+        --bg: var(--bg-light);
+        --card: var(--card-light);
+        --text: var(--text-light);
+        --muted: var(--muted-light);
+        --accent: var(--accent-light);
+        --border: var(--border-light);
+      }
+
+      @supports (color: light-dark(white, black)) {
+        --bg: light-dark(var(--bg-light), var(--bg-dark));
+        --card: light-dark(var(--card-light), var(--card-dark));
+        --text: light-dark(var(--text-light), var(--text-dark));
+        --muted: light-dark(var(--muted-light), var(--muted-dark));
+        --accent: light-dark(var(--accent-light), var(--accent-dark));
+        --border: light-dark(var(--border-light), var(--border-dark));
+      }
+    }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: var(--bg-dark);
+      --card: var(--card-dark);
+      --text: var(--text-dark);
+      --muted: var(--muted-dark);
+      --accent: var(--accent-dark);
+      --border: var(--border-dark);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+      user-select: none;
+    }
+
+    #backdrop {
+      position: fixed;
+      inset: -40px;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 20% 25%, rgba(124, 58, 237, 0.28), transparent 45%),
+        radial-gradient(circle at 80% 70%, rgba(14, 165, 233, 0.24), transparent 50%),
+        radial-gradient(circle at 50% 90%, rgba(16, 185, 129, 0.16), transparent 45%),
+        #05070e;
+      transition: background 1.2s ease, filter 0.6s ease;
+    }
+
+    #dashboard {
+      position: relative;
+      z-index: 2;
+      height: 100vh;
+      padding: 42px 54px 86px;
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      grid-template-rows: auto 1fr auto;
+      gap: 24px;
+      transition: transform 1.8s ease;
+    }
+
+    .top-bar {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .city-selector {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-pill {
+      background: var(--card);
+      color: var(--text);
+      border: 2px solid var(--border);
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      backdrop-filter: blur(16px);
+    }
+
+    .btn-pill.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(167, 139, 250, 0.16);
+    }
+
+    .btn-pill:focus, .btn-pill:focus-visible {
+      border-color: #fff;
+      box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.45);
+      transform: scale(1.05);
+    }
+
+    .hero-clock {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 28px;
+      padding: 36px 42px;
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      outline: none;
+    }
+
+    .hero-clock:focus, .panel:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.35);
+    }
+
+    .time-main {
+      font-size: 112px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .time-sec {
+      font-size: 42px;
+      color: var(--accent);
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .date-line {
+      font-size: 26px;
+      color: var(--muted);
+      margin-top: 12px;
+      font-weight: 500;
+    }
+
+    .world-clocks {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 28px;
+      padding-top: 22px;
+      border-top: 1px solid var(--border);
+    }
+
+    .wc-item {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 12px 16px;
+      border-radius: 14px;
+    }
+    .wc-city { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .wc-time { font-size: 24px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 28px;
+      padding: 28px 32px;
+      backdrop-filter: blur(20px);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      outline: none;
+    }
+
+    .wx-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .wx-temp {
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .wx-cond {
+      font-size: 20px;
+      color: var(--accent);
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    .wx-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .wx-day {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 10px;
+      border-radius: 12px;
+    }
+    .wx-day-name { font-size: 13px; color: var(--muted); }
+    .wx-day-val { font-size: 18px; font-weight: 700; margin-top: 4px; }
+
+    .feed-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .feed-list li {
+      font-size: 16px;
+      line-height: 1.35;
+      padding-left: 14px;
+      border-left: 3px solid var(--accent);
+    }
+
+    .bottom-bar {
+      grid-column: 1 / -1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 15px;
+    }
+
+    .hint-group {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .dot-key {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div id="backdrop"></div>
+
+  <div id="dashboard" role="grid" aria-label="Ambient TV Dashboard">
+    <div class="top-bar" role="row">
+      <div>
+        <h1 style="font-size: 24px; font-weight: 700;">Ambient TV Hub</h1>
+        <p style="font-size: 14px; color: var(--muted);" id="oled-status">OLED Pixel-Shift Protection Active</p>
+      </div>
+      <div class="city-selector">
+        <button class="btn-pill active" data-city="sydney" data-nav="true" tabindex="0">Sydney</button>
+        <button class="btn-pill" data-city="melbourne" data-nav="true" tabindex="-1">Melbourne</button>
+        <button class="btn-pill" data-city="brisbane" data-nav="true" tabindex="-1">Brisbane</button>
+        <button class="btn-pill" data-city="tokyo" data-nav="true" tabindex="-1">Tokyo</button>
+        <button class="btn-pill" data-city="london" data-nav="true" tabindex="-1">London</button>
+      </div>
+    </div>
+
+    <div class="hero-clock" data-nav="true" tabindex="-1" role="gridcell" id="clock-card">
+      <div>
+        <div style="font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); font-weight: 700;">
+          Local Time &middot; Australia/Sydney
+        </div>
+        <div style="margin-top: 14px; display: flex; align-items: baseline;">
+          <span class="time-main" id="main-hm">--:--</span>
+          <span class="time-sec" id="main-sec">--</span>
+        </div>
+        <div class="date-line" id="main-date">Loading date...</div>
+      </div>
+
+      <div class="world-clocks">
+        <div class="wc-item">
+          <div class="wc-city">UTC / GMT</div>
+          <div class="wc-time" id="wc-utc">--:--</div>
+        </div>
+        <div class="wc-item">
+          <div class="wc-city">Tokyo (JST)</div>
+          <div class="wc-time" id="wc-tyo">--:--</div>
+        </div>
+        <div class="wc-item">
+          <div class="wc-city">New York (ET)</div>
+          <div class="wc-time" id="wc-nyc">--:--</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-col" role="row">
+      <div class="panel" data-nav="true" tabindex="-1" role="gridcell" id="wx-card">
+        <div class="wx-header">
+          <div>
+            <div style="font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;" id="wx-city-label">Sydney, AU</div>
+            <div class="wx-cond" id="wx-summary">Fetching Open-Meteo...</div>
+          </div>
+          <div class="wx-temp" id="wx-temp">--&deg;</div>
+        </div>
+        <div style="font-size: 14px; color: var(--muted); margin-top: 8px;" id="wx-details">
+          Wind: -- km/h &middot; Humidity: --%
+        </div>
+        <div class="wx-grid" id="wx-forecast"></div>
+      </div>
+
+      <div class="panel" data-nav="true" tabindex="-1" role="gridcell" id="news-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 14px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;">Live Tech &amp; World Pulse</span>
+          <span style="font-size: 12px; color: var(--muted);" id="news-page">Press OK to cycle</span>
+        </div>
+        <ul class="feed-list" id="headline-list">
+          <li>Loading latest headlines...</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="hint-group">
+        <span><i class="dot-key" style="background:#ef4444;"></i><b>Red / A:</b> Cycle Ambient Scene</span>
+        <span><i class="dot-key" style="background:#22c55e;"></i><b>Green / W:</b> Next Weather City</span>
+        <span><i class="dot-key" style="background:#eab308;"></i><b>Yellow / D:</b> Dimmer Level</span>
+        <span><i class="dot-key" style="background:#3b82f6;"></i><b>Blue / Z:</b> Minimal Zen Mode</span>
+      </div>
+      <div style="color: var(--muted);">TizenBrew Ambient Hub v1.0</div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      document.documentElement.setAttribute("data-theme", "dark");
+
+      try {
+        if (window.tizen && tizen.tvinputdevice) {
+          ["ColorF0Red", "ColorF1Green", "ColorF2Yellow", "ColorF3Blue", "MediaPlay", "MediaPause"].forEach(function (k) {
+            try { tizen.tvinputdevice.registerKey(k); } catch (_) {}
+          });
+        }
+      } catch (_) {}
+
+      var CITIES = {
+        sydney: { name: "Sydney, AU", lat: -33.8688, lon: 151.2093 },
+        melbourne: { name: "Melbourne, AU", lat: -37.8136, lon: 144.9631 },
+        brisbane: { name: "Brisbane, AU", lat: -27.4705, lon: 153.0260 },
+        tokyo: { name: "Tokyo, JP", lat: 35.6762, lon: 139.6503 },
+        london: { name: "London, UK", lat: 51.5074, lon: -0.1278 }
+      };
+
+      var SCENES = [
+        "radial-gradient(circle at 20% 25%, rgba(124, 58, 237, 0.32), transparent 45%), radial-gradient(circle at 80% 70%, rgba(14, 165, 233, 0.28), transparent 50%), #05070e",
+        "radial-gradient(circle at 75% 20%, rgba(236, 72, 153, 0.26), transparent 45%), radial-gradient(circle at 25% 80%, rgba(245, 158, 11, 0.22), transparent 50%), #09050e",
+        "radial-gradient(circle at 30% 30%, rgba(16, 185, 129, 0.28), transparent 45%), radial-gradient(circle at 75% 75%, rgba(6, 182, 212, 0.25), transparent 50%), #040d0c",
+        "radial-gradient(circle at 50% 20%, rgba(59, 130, 246, 0.22), transparent 60%), #020409"
+      ];
+
+      var state = {
+        cityKey: "sydney",
+        sceneIdx: 0,
+        dimLevel: 0,
+        zenMode: false,
+        headlines: [
+          "Homelab Tailnet Mesh: minipc & thinkcentre Technitium DNS nodes active on 192.168.68.0/22.",
+          "TizenBrew Modular Runtime loaded — zero 90-day certificate expiry required.",
+          "Open-Meteo real-time atmospheric feed synchronized for Australian Eastern Time.",
+          "OLED Burn-In Protection: periodic sub-pixel orbital shift active every 45 seconds.",
+          "Press Red to switch ambient gradient themes or Yellow to dim the screen for late-night viewing.",
+          "Press Green to switch between Sydney, Melbourne, Brisbane, Tokyo, and London forecasts."
+        ],
+        headlineOffset: 0
+      };
+
+      function updateClocks() {
+        var now = new Date();
+        var pad = function (n) { return n < 10 ? "0" + n : String(n); };
+        document.getElementById("main-hm").textContent = pad(now.getHours()) + ":" + pad(now.getMinutes());
+        document.getElementById("main-sec").textContent = pad(now.getSeconds());
+        document.getElementById("main-date").textContent = now.toLocaleDateString("en-AU", {
+          weekday: "long", year: "numeric", month: "long", day: "numeric"
+        });
+
+        try {
+          document.getElementById("wc-utc").textContent = now.toLocaleTimeString("en-GB", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: false });
+          document.getElementById("wc-tyo").textContent = now.toLocaleTimeString("en-GB", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hour12: false });
+          document.getElementById("wc-nyc").textContent = now.toLocaleTimeString("en-GB", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", hour12: false });
+        } catch (_) {}
+      }
+      setInterval(updateClocks, 1000);
+      updateClocks();
+
+      // OLED burn-in pixel shift
+      setInterval(function () {
+        var dx = Math.floor(Math.random() * 12) - 6;
+        var dy = Math.floor(Math.random() * 10) - 5;
+        document.getElementById("dashboard").style.transform = "translate(" + dx + "px, " + dy + "px)";
+      }, 45000);
+
+      function weatherCodeLabel(code) {
+        var map = {
+          0: "Clear Sky", 1: "Mainly Clear", 2: "Partly Cloudy", 3: "Overcast",
+          45: "Foggy", 51: "Light Drizzle", 61: "Light Rain", 63: "Moderate Rain",
+          65: "Heavy Rain", 71: "Snow", 80: "Rain Showers", 95: "Thunderstorm"
+        };
+        return map[code] || "Mild Conditions";
+      }
+
+      function loadWeather(cityKey) {
+        state.cityKey = cityKey;
+        var city = CITIES[cityKey] || CITIES.sydney;
+        document.getElementById("wx-city-label").textContent = city.name;
+        document.getElementById("wx-summary").textContent = "Updating forecast...";
+
+        Array.prototype.slice.call(document.querySelectorAll(".btn-pill")).forEach(function (b) {
+          b.classList.toggle("active", b.getAttribute("data-city") === cityKey);
+        });
+
+        var url = "https://api.open-meteo.com/v1/forecast?latitude=" + city.lat + "&longitude=" + city.lon +
+          "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto";
+
+        fetch(url)
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (!d || !d.current) throw new Error("No data");
+            document.getElementById("wx-temp").innerHTML = Math.round(d.current.temperature_2m) + "&deg;";
+            document.getElementById("wx-summary").textContent = weatherCodeLabel(d.current.weather_code);
+            document.getElementById("wx-details").textContent =
+              "Wind: " + Math.round(d.current.wind_speed_10m) + " km/h \u00b7 Humidity: " + d.current.relative_humidity_2m + "%";
+
+            var fg = document.getElementById("wx-forecast");
+            fg.innerHTML = "";
+            var times = (d.daily && d.daily.time) || [];
+            for (var i = 0; i < Math.min(4, times.length); i++) {
+              var dayName = i === 0 ? "Today" : new Date(times[i] + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short" });
+              var hi = Math.round(d.daily.temperature_2m_max[i]);
+              var lo = Math.round(d.daily.temperature_2m_min[i]);
+              var cell = document.createElement("div");
+              cell.className = "wx-day";
+              cell.innerHTML = '<div class="wx-day-name">' + dayName + '</div><div class="wx-day-val">' + hi + '&deg; / ' + lo + '&deg;</div>';
+              fg.appendChild(cell);
+            }
+          })
+          .catch(function () {
+            document.getElementById("wx-summary").textContent = "Offline / Cached";
+          });
+      }
+
+      function renderHeadlines() {
+        var ul = document.getElementById("headline-list");
+        ul.innerHTML = "";
+        for (var i = 0; i < 3; i++) {
+          var idx = (state.headlineOffset + i) % state.headlines.length;
+          var li = document.createElement("li");
+          li.textContent = state.headlines[idx];
+          ul.appendChild(li);
+        }
+      }
+
+      // Fetch HackerNews top stories as live tech pulse
+      function fetchLiveNews() {
+        fetch("https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=8")
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (d && d.hits && d.hits.length) {
+              state.headlines = d.hits.map(function (h) {
+                return h.title + (h.points ? " (" + h.points + " pts)" : "");
+              });
+              renderHeadlines();
+            }
+          })
+          .catch(function () {});
+      }
+
+      Array.prototype.slice.call(document.querySelectorAll(".btn-pill")).forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          loadWeather(btn.getAttribute("data-city"));
+        });
+      });
+
+      document.getElementById("news-card").addEventListener("click", function () {
+        state.headlineOffset = (state.headlineOffset + 3) % state.headlines.length;
+        renderHeadlines();
+      });
+
+      function cycleScene() {
+        state.sceneIdx = (state.sceneIdx + 1) % SCENES.length;
+        document.getElementById("backdrop").style.background = SCENES[state.sceneIdx];
+      }
+
+      function cycleCity() {
+        var keys = Object.keys(CITIES);
+        var next = keys[(keys.indexOf(state.cityKey) + 1) % keys.length];
+        loadWeather(next);
+      }
+
+      function cycleDimmer() {
+        var levels = [1, 0.7, 0.4, 0.2];
+        state.dimLevel = (state.dimLevel + 1) % levels.length;
+        document.body.style.opacity = String(levels[state.dimLevel]);
+      }
+
+      function toggleZen() {
+        state.zenMode = !state.zenMode;
+        var rightCol = document.querySelector(".right-col");
+        var topBar = document.querySelector(".top-bar");
+        var dash = document.getElementById("dashboard");
+        if (state.zenMode) {
+          rightCol.style.display = "none";
+          topBar.style.opacity = "0.15";
+          dash.style.gridTemplateColumns = "1fr";
+        } else {
+          rightCol.style.display = "flex";
+          topBar.style.opacity = "1";
+          dash.style.gridTemplateColumns = "1.35fr 1fr";
+        }
+      }
+
+      // Spatial 2D focus navigation
+      function getCandidates() {
+        var all = Array.prototype.slice.call(document.querySelectorAll('[data-nav="true"]'));
+        return all.filter(function (el) {
+          if (typeof el.checkVisibility === "function") return el.checkVisibility();
+          return el.offsetWidth > 0 && el.offsetHeight > 0;
+        });
+      }
+
+      function setRovingFocus(target) {
+        var candidates = getCandidates();
+        candidates.forEach(function (el) {
+          el.setAttribute("tabindex", el === target ? "0" : "-1");
+        });
+        target.focus();
+        target.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+
+      function findNextCandidate(current, dir) {
+        var candidates = getCandidates().filter(function (el) { return el !== current; });
+        var curRect = current.getBoundingClientRect();
+        var tolerance = 4;
+
+        var inDir = candidates.filter(function (el) {
+          var r = el.getBoundingClientRect();
+          if (dir === "right") return r.left >= curRect.right - tolerance;
+          if (dir === "left") return r.right <= curRect.left + tolerance;
+          if (dir === "down") return r.top >= curRect.bottom - tolerance;
+          if (dir === "up") return r.bottom <= curRect.top + tolerance;
+          return false;
+        });
+
+        if (!inDir.length) return null;
+
+        var curCenterX = (curRect.left + curRect.right) / 2;
+        var curCenterY = (curRect.top + curRect.bottom) / 2;
+        var aligned = [];
+        var unaligned = [];
+
+        inDir.forEach(function (el) {
+          var r = el.getBoundingClientRect();
+          var cx = (r.left + r.right) / 2;
+          var cy = (r.top + r.bottom) / 2;
+          var gap, perpOffset, overlaps;
+
+          if (dir === "left" || dir === "right") {
+            gap = dir === "right" ? Math.max(0, r.left - curRect.right) : Math.max(0, curRect.left - r.right);
+            perpOffset = Math.abs(cy - curCenterY);
+            overlaps = Math.min(r.bottom, curRect.bottom) > Math.max(r.top, curRect.top);
+          } else {
+            gap = dir === "down" ? Math.max(0, r.top - curRect.bottom) : Math.max(0, curRect.top - r.bottom);
+            perpOffset = Math.abs(cx - curCenterX);
+            overlaps = Math.min(r.right, curRect.right) > Math.max(r.left, curRect.left);
+          }
+
+          var entry = { el: el, gap: gap, perpOffset: perpOffset, score: gap + 2.5 * perpOffset };
+          if (overlaps) aligned.push(entry);
+          else unaligned.push(entry);
+        });
+
+        if (aligned.length) {
+          aligned.sort(function (a, b) { return (a.gap - b.gap) || (a.perpOffset - b.perpOffset); });
+          return aligned[0].el;
+        }
+        unaligned.sort(function (a, b) { return a.score - b.score; });
+        return unaligned[0].el;
+      }
+
+      document.getElementById("dashboard").addEventListener("keydown", function (e) {
+        if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+        var dirMap = { 37: "left", ArrowLeft: "left", 38: "up", ArrowUp: "up", 39: "right", ArrowRight: "right", 40: "down", ArrowDown: "down" };
+        var dir = dirMap[e.key] || dirMap[e.keyCode];
+        if (dir) {
+          var cur = document.activeElement;
+          var candidates = getCandidates();
+          if (candidates.indexOf(cur) === -1) {
+            if (candidates.length) { e.preventDefault(); setRovingFocus(candidates[0]); }
+            return;
+          }
+          var next = findNextCandidate(cur, dir);
+          if (next) {
+            e.preventDefault();
+            setRovingFocus(next);
+          }
+          return;
+        }
+        if (e.key === "Enter" || e.keyCode === 13) {
+          var active = document.activeElement;
+          if (active && active.getAttribute("data-nav") === "true") {
+            e.preventDefault();
+            active.click();
+          }
+        }
+      });
+
+      window.addEventListener("keydown", function (e) {
+        var code = e.keyCode;
+        var k = e.key;
+        if (code === 403 || k === "a" || k === "A") { e.preventDefault(); cycleScene(); }
+        else if (code === 404 || k === "w" || k === "W") { e.preventDefault(); cycleCity(); }
+        else if (code === 405 || k === "d" || k === "D") { e.preventDefault(); cycleDimmer(); }
+        else if (code === 406 || k === "z" || k === "Z") { e.preventDefault(); toggleZen(); }
+        else if (code === 10009) {
+          try { tizen.application.getCurrentApplication().exit(); } catch (_) {}
+        }
+      });
+
+      renderHeadlines();
+      loadWeather("sydney");
+      fetchLiveNews();
+      setInterval(function () { loadWeather(state.cityKey); }, 600000);
+      setInterval(function () {
+        state.headlineOffset = (state.headlineOffset + 3) % state.headlines.length;
+        renderHeadlines();
+      }, 15000);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "tizenbrew-ambient-dashboard",
+  "version": "1.0.0",
+  "description": "4K Ambient TV Dashboard for Samsung Tizen TV: live Open-Meteo weather, multi-timezone clocks, RSS headlines, and OLED burn-in safe screensaver mode.",
+  "packageType": "app",
+  "appName": "Ambient TV Hub",
+  "appPath": "app/index.html",
+  "keys": [
+    "ColorF0Red",
+    "ColorF1Green",
+    "ColorF2Yellow",
+    "ColorF3Blue",
+    "MediaPlay",
+    "MediaPause"
+  ]
+}
